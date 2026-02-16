@@ -11,7 +11,7 @@ const auth = require('../app/Middleware/AuthMiddleware');
 const guest = require('../app/Middleware/GuestMiddleware');
 
 // Core Middlewares
-const dbFeature = require('../core/Middleware/DatabaseFeatureMiddleware');
+const dbFeature = require('../core/middleware/DatabaseFeatureMiddleware');
 
 /**
  * fxd4 Route Mapping
