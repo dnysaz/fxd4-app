@@ -11,7 +11,7 @@ const subCommand = args[1];
 /**
  * Configuration
  */
-const CORE_REPO = "https://github.com/ketutdana/fxd4-core.git";
+const CORE_REPO = "https://github.com/dnysaz/fxd4-core.git";
 
 const createFile = (dir, fileName, content) => {
     const fullDir = path.join(process.cwd(), dir);
