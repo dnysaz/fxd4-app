@@ -1,0 +1,217 @@
+#!/usr/bin/env node
+
+const fs = require('fs');
+const path = require('path');
+const { execSync } = require('child_process');
+const args = process.argv.slice(2);
+
+const command = args[0]; 
+const subCommand = args[1];
+
+/**
+ * Configuration
+ */
+const CORE_REPO = "https://github.com/ketutdana/fxd4-core.git";
+
+const createFile = (dir, fileName, content) => {
+    const fullDir = path.join(process.cwd(), dir);
+    if (!fs.existsSync(fullDir)) {
+        fs.mkdirSync(fullDir, { recursive: true });
+    }
+
+    const filePath = path.join(fullDir, fileName);
+    if (fs.existsSync(filePath)) {
+        console.error(`Error: File ${fileName} already exists in ${dir}`);
+        return;
+    }
+    fs.writeFileSync(filePath, content);
+    console.log(`Created: ${dir}/${fileName}`);
+};
+
+/**
+ * Logic untuk sinkronisasi folder core berdasarkan fxd4Version di package.json
+ */
+const syncCore = (isUpdate = false) => {
+    const corePath = path.join(process.cwd(), 'core');
+    const tempPath = path.join(process.cwd(), 'temp_core_sync');
+    const packagePath = path.join(process.cwd(), 'package.json');
+
+    // Default ke branch 'main' jika tidak ada definisi versi
+    let targetVersion = 'main';
+
+    if (fs.existsSync(packagePath)) {
+        try {
+            const pkg = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
+            if (pkg.fxd4Version) {
+                targetVersion = pkg.fxd4Version;
+            }
+        } catch (e) {
+            console.error('Error: Gagal memproses package.json');
+        }
+    }
+    
+    if (isUpdate) {
+        console.log(`fxd4: Updating core engine to version [${targetVersion}]...`);
+    } else {
+        console.log(`fxd4: Installing core engine version [${targetVersion}]...`);
+        if (fs.existsSync(corePath)) {
+            console.error('Error: Folder core sudah tersedia. Gunakan run:update untuk memperbarui.');
+            return;
+        }
+    }
+
+    try {
+        if (fs.existsSync(tempPath)) {
+            fs.rmSync(tempPath, { recursive: true, force: true });
+        }
+
+        console.log(`Fetching core from ${CORE_REPO} (Branch/Tag: ${targetVersion})...`);
+        
+        // Menggunakan --branch untuk mengambil versi spesifik dan --depth 1 untuk kecepatan download
+        execSync(`git clone --branch ${targetVersion} --depth 1 ${CORE_REPO} "${tempPath}" --quiet`);
+        
+        if (fs.existsSync(corePath)) {
+            fs.rmSync(corePath, { recursive: true, force: true });
+        }
+
+        fs.renameSync(tempPath, corePath);
+        
+        const gitInternal = path.join(corePath, '.git');
+        if (fs.existsSync(gitInternal)) {
+            fs.rmSync(gitInternal, { recursive: true, force: true });
+        }
+
+        console.log(`fxd4: Core engine [${targetVersion}] synchronized successfully.`);
+    } catch (error) {
+        console.error(`Error: Gagal sinkronisasi. Pastikan branch/tag "${targetVersion}" tersedia di GitHub.`);
+        if (fs.existsSync(tempPath)) fs.rmSync(tempPath, { recursive: true, force: true });
+    }
+};
+
+// --- Command Processing ---
+
+if (command === 'run:install') {
+    syncCore(false);
+    process.exit(0);
+}
+
+else if (command === 'run:update') {
+    syncCore(true);
+    process.exit(0);
+}
+
+else if (command === 'run:build') {
+    console.log('fxd4: Starting production build process...');
+    
+    try {
+        // 1. Verifikasi integritas Core Engine
+        const corePath = path.join(process.cwd(), 'core');
+        if (!fs.existsSync(corePath)) {
+            console.log('fxd4: Core engine missing. Syncing now...');
+            syncCore(false);
+        }
+
+        // 2. Verifikasi folder wajib
+        const requiredDirs = ['public', 'app/Controllers', 'app/Models', 'views'];
+        requiredDirs.forEach(dir => {
+            const fullPath = path.join(process.cwd(), dir);
+            if (!fs.existsSync(fullPath)) {
+                fs.mkdirSync(fullPath, { recursive: true });
+                console.log(`fxd4: Verified directory [${dir}]`);
+            }
+        });
+
+        console.log('fxd4: Optimization complete. Ready for production deployment.');
+    } catch (error) {
+        console.error('fxd4: Build failed:', error.message);
+        process.exit(1);
+    }
+    process.exit(0);
+}
+
+else if (command && command.startsWith('make:')) {
+    const name = subCommand;
+    if (!name) {
+        console.error('Error: Please provide a name. Example: fx make:controller UserController');
+        process.exit(1);
+    }
+
+    const formattedName = name.charAt(0).toUpperCase() + name.slice(1);
+
+    switch (command) {
+        case 'make:controller':
+            const controllerContent = `
+class ${formattedName} {
+    /**
+     * Path: app/Controllers/${formattedName}.js
+     */
+    static async index(req, res, next) {
+        try {
+            res.render('index', { 
+                title: '${formattedName} Page',
+                message: 'Successfully generated by fxd4 CLI' 
+            });
+        } catch (error) {
+            next(error); 
+        }
+    }
+
+    static async store(req, res, next) {
+        try {
+            // Logic to store data
+        } catch (error) {
+            next(error);
+        }
+    }
+}
+
+module.exports = ${formattedName};`;
+            createFile('app/Controllers', `${formattedName}.js`, controllerContent.trim());
+            break;
+
+        case 'make:middleware':
+            const middlewareContent = `
+/**
+ * Path: app/Middleware/${formattedName}.js
+ */
+module.exports = (req, res, next) => {
+    console.log('${formattedName} Middleware executing...');
+    next();
+};`;
+            createFile('app/Middleware', `${formattedName}.js`, middlewareContent.trim());
+            break;
+
+        case 'make:model':
+            const modelContent = `
+const BaseModel = require('../../core/model/BaseModel');
+
+/**
+ * Path: app/Models/${formattedName}.js
+ */
+class ${formattedName} extends BaseModel {
+    constructor() {
+        super('${formattedName.toLowerCase()}s');
+    }
+
+    async customQuery() {
+        return await this.where('status', 'active').get();
+    }
+}
+
+module.exports = new ${formattedName}();`;
+            createFile('app/Models', `${formattedName}.js`, modelContent.trim());
+            break;
+
+        default:
+            console.log('Error: Unknown generator command.');
+    }
+} else {
+    console.log('fxd4.js CLI tool v0.6');
+    console.log('Usage:');
+    console.log('  fx run:install          Install core engine based on package.json');
+    console.log('  fx run:update           Update core engine based on package.json');
+    console.log('  fx make:controller      Create a new controller');
+    console.log('  fx make:model           Create a new model');
+    console.log('  fx make:middleware      Create a new middleware');
+    console.log('  fx run:build            Prepare for production');
+}
