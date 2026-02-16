@@ -1,7 +1,10 @@
 # Dependency folders
 node_modules/
 
-# Environment variables (Sangat Rahasia!)
+# Framework Core (Automatically managed by fxd4 installer)
+core/
+
+# Environment variables (Highly Secret!)
 .env
 .env.local
 .env.production
