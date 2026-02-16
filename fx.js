@@ -8,10 +8,30 @@ const args = process.argv.slice(2);
 const command = args[0]; 
 const subCommand = args[1];
 
+
+/**
+ * Helper: Simple .env Parser (karena kita tidak ingin bergantung pada library dotenv di sini)
+ */
+const getEnv = (key, fallback) => {
+    const envPath = path.join(process.cwd(), '.env');
+    if (fs.existsSync(envPath)) {
+        const envContent = fs.readFileSync(envPath, 'utf8');
+        const lines = envContent.split('\n');
+        for (const line of lines) {
+            const [k, v] = line.split('=');
+            if (k && k.trim() === key) return v.trim();
+        }
+    }
+    return fallback;
+};
+
 /**
  * Configuration
+ * Mengambil dari ENV, jika tidak ada baru gunakan fallback
  */
-const CORE_REPO = "https://github.com/dnysaz/fxd4-core.git";
+const DEFAULT_REPO = "https://github.com/dnysaz/fxd4-core.git";
+const CORE_REPO = getEnv('FXD4_CORE_REPO', DEFAULT_REPO);
+
 
 const createFile = (dir, fileName, content) => {
     const fullDir = path.join(process.cwd(), dir);

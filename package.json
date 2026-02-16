@@ -5,13 +5,18 @@
     "description": "Authentically built by Ketut Dana",
     "main": "server.js",
     "bin": {
-        "fx": "./fx.js"
+        "fx": "node fx.js"
     },
     "scripts": {
         "dev": "nodemon server.js",
         "start": "node server.js",
         "postinstall": "node fx.js run:install",
-        "build": "node fx.js run build"
+        "fx:install": "node fx.js run:install",
+        "fx:update": "node fx.js run:update",
+        "fx:build": "node fx.js run:build",
+        "make:controller": "node fx.js make:controller",
+        "make:model": "node fx.js make:model",
+        "make:middleware": "node fx.js make:middleware"
     },
     "dependencies": {
         "@supabase/supabase-js": "^2.45.0",
