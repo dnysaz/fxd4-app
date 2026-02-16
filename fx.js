@@ -35,6 +35,8 @@ const syncCore = (isUpdate = false) => {
     const corePath = path.join(process.cwd(), 'core');
     const tempPath = path.join(process.cwd(), 'temp_core_sync');
     const packagePath = path.join(process.cwd(), 'package.json');
+    const envPath = path.join(process.cwd(), '.env');
+    const envExamplePath = path.join(process.cwd(), '.env.example');
 
     // Default ke branch 'main' jika tidak ada definisi versi
     let targetVersion = 'main';
@@ -74,17 +76,33 @@ const syncCore = (isUpdate = false) => {
             fs.rmSync(corePath, { recursive: true, force: true });
         }
 
+        // Pindahkan isi repo ke folder core
         fs.renameSync(tempPath, corePath);
         
+        // Hapus metadata git agar tidak mengganggu repository user
         const gitInternal = path.join(corePath, '.git');
         if (fs.existsSync(gitInternal)) {
             fs.rmSync(gitInternal, { recursive: true, force: true });
         }
 
         console.log(`fxd4: Core engine [${targetVersion}] synchronized successfully.`);
+
+        // --- Fitur Auto-Copy .env ---
+        if (!fs.existsSync(envPath)) {
+            if (fs.existsSync(envExamplePath)) {
+                fs.copyFileSync(envExamplePath, envPath);
+                console.log('fxd4: Created .env from .env.example. Please update your credentials.');
+            } else {
+                console.warn('fxd4 Warning: .env.example not found, skipping auto-copy.');
+            }
+        }
+
     } catch (error) {
         console.error(`Error: Gagal sinkronisasi. Pastikan branch/tag "${targetVersion}" tersedia di GitHub.`);
-        if (fs.existsSync(tempPath)) fs.rmSync(tempPath, { recursive: true, force: true });
+        // Pastikan folder temp dihapus jika terjadi kegagalan
+        if (fs.existsSync(tempPath)) {
+            fs.rmSync(tempPath, { recursive: true, force: true });
+        }
     }
 };
 
