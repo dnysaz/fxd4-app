@@ -1,33 +1,65 @@
 const User = require('../Models/User');
 
+/**
+ * DashboardController - fxd4 Framework
+ * Optimized for Fast eXecutable Delivery
+ */
 class DashboardController {
     /**
-     * Dashboard Page - Mengirim data statistik dan data diri user
+     * Dashboard Page
      */
-    // app/Controllers/DashboardController.js
-    static async dashboard(req, res, next) {
-        try {
-            // Jalankan query database secara paralel (tidak saling tunggu)
-            const [users] = await Promise.all([
-                User.all()
-                // Jika ada query lain, tinggal tambah di sini: Post.all(), dll.
-            ]);
+    static async dashboard(process) {
+        const userId = process.user?.id || process.user?.sub;
+        const dbUser = await User.find(userId);
 
-            const authUser = res.locals.user;
+        process.render('dashboard', { 
+            title: 'Dashboard', 
+            description: 'Overview of your application and system status.',
+            userData: {
+                id: userId,
+                email: process.user?.email,
+                fullName: dbUser?.full_name || 'User',
+            }
+        });
 
-            res.render('dashboard', { 
-                title: 'Dashboard', 
-                description:'Welcome to Dashboard!',
-                userData: {
-                    id: authUser?.id || authUser?.sub,
-                    email: authUser?.email,
-                    fullName: authUser?.user_metadata?.full_name,
-                    lastSignIn: authUser?.last_sign_in_at
-                }
-            });
-        } catch (error) {
-            next(error); 
-        }
+        process.error;
+    }
+
+    /**
+     * Edit Profile Page
+     */
+    static async editProfile(process) {
+        const userId = process.user?.id || process.user?.sub;
+        const dbUser = await User.find(userId);
+
+        process.render('profile.edit', { 
+            title: 'Edit Profile',
+            description: 'Update your personal information.',
+            userData: {
+                id: userId,
+                email: process.user?.email,
+                fullName: dbUser?.full_name || 'User'
+            }
+        });
+
+        process.error;
+    }
+
+    /**
+     * Update Profile Action
+     */
+    static async updateProfile(process) {
+        const { fullName } = process.body;
+        const userId = process.user?.id || process.user?.sub;
+
+        if (!userId) throw new Error("Unauthorized.");
+
+        await User.update(userId, {
+            full_name: fullName 
+        });
+
+        process.redirect('dashboard');
+        process.error;
     }
 }
 

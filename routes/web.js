@@ -1,33 +1,28 @@
-const express = require('express');
-const router = express.Router(); 
+const fx = require('./config');
+const route = fx.router;
 
-// Controllers
-const HomeController = require('../app/Controllers/HomeController');
-const AuthController = require('../app/Controllers/AuthController');
-const DashboardController = require('../app/Controllers/DashboardController');
+// --- Public Routes ---
+route.get('/', fx.HomeController.home).name('home');
 
-// App Middlewares
-const auth = require('../app/Middleware/AuthMiddleware');
-const guest = require('../app/Middleware/GuestMiddleware');
+// --- Auth Guest Group ---
+route.group([fx.dbFeature, fx.guest], (route) => {
+    route.get('/login', fx.AuthController.loginPage).name('login');
+    route.get('/register', fx.AuthController.registerPage).name('register');
+    
+    route.post('/login', fx.AuthController.login).name('login.post');
+    route.post('/register', fx.AuthController.register).name('register.post');
+});
 
-// Core Middlewares
-const dbFeature = require('../core/middleware/DatabaseFeatureMiddleware');
+// --- Dashboard & Protected Group ---
+route.group([fx.dbFeature, fx.auth], (route) => {
+    route.get('/dashboard', fx.DashboardController.dashboard).name('dashboard');
+    
+    // Profile Management
+    route.get('/dashboard/edit-profile', fx.DashboardController.editProfile).name('profile.edit');
+    route.post('/dashboard/update-profile', fx.DashboardController.updateProfile).name('profile.update');
+    
+    // Session Management
+    route.post('/logout', fx.AuthController.logout).name('logout');
+});
 
-/**
- * fxd4 Route Mapping
- */
-
-// Public
-router.get('/', HomeController.home);
-
-// Dashboard (Protected by DB Feature & Auth)
-router.get('/dashboard', [dbFeature, auth], DashboardController.dashboard);
-router.post('/logout', [dbFeature, auth], AuthController.logout);
-
-// Authentication (Protected by DB Feature & Guest Check)
-router.get('/login', [dbFeature, guest], AuthController.loginPage);
-router.get('/register', [dbFeature, guest], AuthController.registerPage);
-router.post('/login', [dbFeature, guest], AuthController.login);
-router.post('/register', [dbFeature, guest], AuthController.register);
-
-module.exports = router;
+module.exports = route;

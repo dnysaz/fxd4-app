@@ -1,17 +1,19 @@
 /**
  * GuestMiddleware - fxd4 Framework
- * Lokasi: app/Middleware/GuestMiddleware.js
  */
 module.exports = (req, res, next) => {
-    /**
-     * Jika res.locals.user ditemukan, berarti user sudah memiliki session aktif.
-     * Tidak perlu login lagi.
-     */
+    // Jika user SUDAH login
     if (res.locals.user) {
-        // User sudah login, arahkan langsung ke dashboard
-        return res.redirect('/dashboard');
+        const dashboardPath = global.fxd4Routes ? global.fxd4Routes['dashboard'] : '/dashboard';
+        
+        // HANYA redirect jika user mencoba mengakses halaman guest (Login/Register)
+        // Cek apakah path saat ini adalah bagian dari auth (login/register)
+        const isAuthPage = req.path.includes('/login') || req.path.includes('/register');
+        
+        if (isAuthPage) {
+            return res.redirect(dashboardPath);
+        }
     }
     
-    // User adalah tamu (guest), izinkan akses ke halaman login/register
     next();
 };
